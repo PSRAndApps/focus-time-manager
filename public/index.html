@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus Time Manager</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide-react@0.263.1/dist/umd/lucide-react.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { Clock, Play, Pause, Square, AlertCircle, CheckCircle, Brain, Users, Briefcase, BarChart3 } = lucideReact;
+
+        const FocusTimeManager = () => {
+          const [activeSession, setActiveSession] = useState(null);
+          const [timeLeft, setTimeLeft] = useState(0);
+          const [isRunning, setIsRunning] = useState(false);
+          const [completedSessions, setCompletedSessions] = useState([]);
+          const [distractionLog, setDistractionLog] = useState([]);
+          const [currentDistraction, setCurrentDistraction] = useState('');
+          const [sessionStartTime, setSessionStartTime] = useState(null);
+          const [analytics, setAnalytics] = useState(null);
+          const [showAnalytics, setShowAnalytics] = useState(false);
+
+          const sessionTypes = {
+            work: {
+              name: 'University PM Work',
+              duration: 240,
+              color: 'bg-blue-500',
+              icon: Briefcase,
+              tips: [
+                'Close all non-work browser tabs',
+                'Set phone to Do Not Disturb',
+                'Use university project management tools',
+                'Block social media sites'
+              ]
+            },
+            family: {
+              name: 'Family Time',
+              duration: 240,
+              color: 'bg-green-500',
+              icon: Users,
+              tips: [
+                'Put devices in another room',
+                'Engage in activities together',
+                'No work emails or calls',
+                'Be fully present'
+              ]
+            },
+            research: {
+              name: 'AI Research & Startup',
+              duration: 120,
+              color: 'bg-purple-500',
+              icon: Brain,
+              tips: [
+                'Use Pomodoro technique (25min focus)',
+                'Keep research notebook handy',
+                'Set specific learning goals',
+                'Limit research rabbit holes'
+              ]
+            }
+          };
+
+          useEffect(() => {
+            loadAnalytics();
+          }, []);
+
+          const loadAnalytics = async () => {
+            try {
+              const response = await fetch('/api/analytics');
+              const data = await response.json();
+              setAnalytics(data);
+            } catch (error) {
+              console.error('Failed to load analytics:', error);
+            }
+          };
+
+          useEffect(() => {
+            let interval = null;
+            if (isRunning && timeLeft > 0) {
+              interval = setInterval(() => {
+                setTimeLeft(timeLeft => timeLeft - 1);
+              }, 60000);
+            } else if (timeLeft === 0 && isRunning) {
+              setIsRunning(false);
+              if (activeSession) {
+                completeSession();
+              }
+            }
+            return () => clearInterval(interval);
+          }, [isRunning, timeLeft]);
+
+          const startSession = (type) => {
+            setActiveSession(type);
+            setTimeLeft(sessionTypes[type].duration);
+            setIsRunning(true);
+            setDistractionLog([]);
+            setSessionStartTime(new Date());
+          };
+
+          const pauseSession = () => {
+            setIsRunning(!isRunning);
+          };
+
+          const stopSession = () => {
+            if (activeSession && sessionStartTime) {
+              completeSession();
+            }
+            resetSession();
+          };
+
+          const resetSession = () => {
+            setIsRunning(false);
+            setActiveSession(null);
+            setTimeLeft(0);
+            setDistractionLog([]);
+            setSessionStartTime(null);
+          };
+
+          const completeSession = async () => {
+            const sessionData = {
+              sessionType: activeSession,
+              plannedDuration: sessionTypes[activeSession].duration,
+              actualDuration: sessionTypes[activeSession].duration - timeLeft,
+              distractionCount: distractionLog.length,
+              distractions: distractionLog,
+              completedAt: new Date().toISOString(),
+              wasCompleted: timeLeft === 0
+            };
+
+            try {
+              await fetch('/api/log-session', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(sessionData)
+              });
+
+              setCompletedSessions(prev => [...prev, {
+                ...sessionData,
+                completedAt: new Date().toLocaleTimeString()
+              }]);
+
+              loadAnalytics();
+            } catch (error) {
+              console.error('Failed to log session:', error);
+            }
+
+            resetSession();
+          };
+
+          const logDistraction = () => {
+            if (currentDistraction.trim()) {
+              setDistractionLog([...distractionLog, {
+                distraction: currentDistraction,
+                time: new Date().toLocaleTimeString()
+              }]);
+              setCurrentDistraction('');
+            }
+          };
+
+          const formatTime = (minutes) => {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours}h ${mins}m`;
+          };
+
+          return (
+            <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen">
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-800 mb-2">Focus Time Manager</h1>
+                    <p className="text-gray-600">Block distractions and manage your three key time blocks</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowAnalytics(!showAnalytics)}
+                    className="flex items-center space-x-2 bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600"
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    <span>Analytics</span>
+                  </button>
+                </div>
+              </div>
+
+              {showAnalytics && analytics && (
+                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold mb-4">Your Focus Analytics</h3>
+                  <div className="grid md:grid-cols-4 gap-4 mb-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">{analytics.totalSessions}</div>
+                      <div className="text-sm text-gray-600">Total Sessions</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">{formatTime(analytics.totalFocusTime)}</div>
+                      <div className="text-sm text-gray-600">Total Focus Time</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-orange-600">{Math.round(analytics.averageDistractions * 100) / 100}</div>
+                      <div className="text-sm text-gray-600">Avg Distractions</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600">{Object.keys(analytics.dailyStats).length}</div>
+                      <div className="text-sm text-gray-600">Active Days</div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid md:grid-cols-3 gap-4">
+                    {Object.entries(analytics.sessionsByType).map(([type, count]) => (
+                      <div key={type} className="bg-gray-50 p-3 rounded-lg text-center">
+                        <div className="font-semibold">{sessionTypes[type]?.name || type}</div>
+                        <div className="text-lg font-bold text-gray-700">{count} sessions</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeSession && (
+                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      {React.createElement(sessionTypes[activeSession].icon, { 
+                        className: "w-6 h-6 text-white" 
+                      })}
+                      <div className={`px-3 py-1 rounded-full text-white font-medium ${sessionTypes[activeSession].color}`}>
+                        {sessionTypes[activeSession].name}
+                      </div>
+                    </div>
+                    <div className="text-2xl font-bold text-gray-800">
+                      {formatTime(timeLeft)}
+                    </div>
+                  </div>
+                  
+                  <div className="flex space-x-3 mb-4">
+                    <button 
+                      onClick={pauseSession}
+                      className="flex items-center space-x-2 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600"
+                    >
+                      {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                      <span>{isRunning ? 'Pause' : 'Resume'}</span>
+                    </button>
+                    <button 
+                      onClick={stopSession}
+                      className="flex items-center space-x-2 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
+                    >
+                      <Square className="w-4 h-4" />
+                      <span>Stop & Save</span>
+                    </button>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <h3 className="font-semibold mb-2">Distraction Logger</h3>
+                    <div className="flex space-x-2 mb-3">
+                      <input
+                        type="text"
+                        value={currentDistraction}
+                        onChange={(e) => setCurrentDistraction(e.target.value)}
+                        placeholder="What distracted you?"
+                        className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onKeyPress={(e) => e.key === 'Enter' && logDistraction()}
+                      />
+                      <button 
+                        onClick={logDistraction}
+                        className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600"
+                      >
+                        Log
+                      </button>
+                    </div>
+                    {distractionLog.length > 0 && (
+                      <div className="text-sm text-gray-600">
+                        Distractions logged: {distractionLog.length}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {!activeSession && (
+                <div className="grid md:grid-cols-3 gap-6 mb-6">
+                  {Object.entries(sessionTypes).map(([key, session]) => (
+                    <div key={key} className="bg-white rounded-lg shadow-lg p-6">
+                      <div className="flex items-center space-x-3 mb-4">
+                        {React.createElement(session.icon, { className: "w-8 h-8 text-gray-600" })}
+                        <h3 className="text-lg font-semibold">{session.name}</h3>
+                      </div>
+                      <p className="text-gray-600 mb-4">Duration: {formatTime(session.duration)}</p>
+                      
+                      <div className="mb-4">
+                        <h4 className="font-medium mb-2 text-sm">Focus Tips:</h4>
+                        <ul className="text-sm text-gray-600 space-y-1">
+                          {session.tips.map((tip, index) => (
+                            <li key={index} className="flex items-start space-x-2">
+                              <span className="text-gray-400">•</span>
+                              <span>{tip}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      
+                      <button 
+                        onClick={() => startSession(key)}
+                        className={`w-full text-white py-3 rounded-lg font-medium hover:opacity-90 ${session.color}`}
+                      >
+                        Start Session
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {completedSessions.length > 0 && (
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2">
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                    <span>Today's Completed Sessions</span>
+                  </h3>
+                  <div className="space-y-3">
+                    {completedSessions.map((session, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-3 h-3 rounded-full ${sessionTypes[session.sessionType].color}`}></div>
+                          <span className="font-medium">{sessionTypes[session.sessionType].name}</span>
+                          <span className="text-sm text-gray-500">at {session.completedAt}</span>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {session.distractionCount} distractions • {formatTime(session.actualDuration)} focused
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        ReactDOM.render(<FocusTimeManager />, document.getElementById('root'));
+    </script>
+</body>
+</html>

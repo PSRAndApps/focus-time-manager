@@ -1,0 +1,19 @@
+focus.pillisureshraju.in {
+    reverse_proxy localhost:3000
+    
+    # Optional: Add security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    }
+    
+    # Optional: Enable gzip compression
+    encode gzip
+    
+    # Logging
+    log {
+        output file /var/log/caddy/focus-app.log
+    }
+}
