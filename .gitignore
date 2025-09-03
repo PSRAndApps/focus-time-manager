@@ -31,6 +31,18 @@ Thumbs.db
 logs
 *.log
 
+# App-specific logs/cache
+focus_sessions.log
+analytics_cache.json
+
+# Generated CSS (Tailwind)
+public/output.css
+public/input.css
+
+# PM2 logs and ecosystem files
+pm2.log
+ecosystem.config.js
+
 # Misc
 coverage/
 *.tgz

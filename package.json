@@ -6,13 +6,19 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "setup": "npm install && pm2 start ecosystem.config.js"
+    "setup": "npm install && pm2 start ecosystem.config.js",
+    "test": "node test.js",
+    "test:quick": "node quick-test.js"
   },
   "dependencies": {
+    "@tailwindcss/cli": "^4.1.12",
+    "cors": "^2.8.5",
     "express": "^4.18.2",
-    "cors": "^2.8.5"
+    "node-fetch": "^2.7.0",
+    "tailwindcss": "^4.1.12"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.28.3",
     "nodemon": "^3.0.1"
   }
 }
