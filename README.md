@@ -37,12 +37,12 @@ npm start
 
 MIT
 
-USEFUL COMMANDS AFTER DEPLOYMENT
-# ===============================================
-# Check application status: pm2 status
-# View real-time logs: pm2 logs focus-app
-# Restart application: pm2 restart focus-app
-# View session data: tail -f focus_sessions.log
-# Check Caddy status: sudo systemctl status caddy
-# Reload Caddy config: sudo systemctl reload caddy
-# Export session data: curl https://focus.yourdomain.com/api/export > sessions.json
+## USEFUL COMMANDS AFTER DEPLOYMENT
+===============================================
+* Check application status: pm2 status
+* View real-time logs: pm2 logs focus-app
+* Restart application: pm2 restart focus-app
+* View session data: tail -f focus_sessions.log
+* Check Caddy status: sudo systemctl status caddy
+* Reload Caddy config: sudo systemctl reload caddy
+* Export session data: curl https://focus.yourdomain.com/api/export > sessions.json
